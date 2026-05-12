@@ -42,9 +42,9 @@ export function RootNavigator() {
         }}
       >
         {!isLoggedIn ? (
-          <Stack.Screen name="Login" component={LoginScreen} />
+          <Stack.Screen name="Login" component={LoginScreen as any} />
         ) : (
-          <Stack.Screen name="Home" component={HomeScreen} />
+          <Stack.Screen name="Home" component={HomeScreen as any} />
         )}
       </Stack.Navigator>
     </NavigationContainer>
