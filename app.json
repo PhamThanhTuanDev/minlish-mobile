@@ -5,21 +5,11 @@
     "owner": "phamthanhtuandev",
     "scheme": "minlish",
     "version": "1.0.0",
-    "sdkVersion": "54.0.0",
+    "sdkVersion": "53.0.0",
     "orientation": "portrait",
     "icon": "./assets/icon.png",
     "userInterfaceStyle": "light",
     "newArchEnabled": false,
-    "plugins": [
-      [
-        "expo-build-properties",
-        {
-          "ios": {
-            "useFrameworks": "static"
-          }
-        }
-      ]
-    ],
     "splash": {
       "image": "./assets/splash-icon.png",
       "resizeMode": "contain",
