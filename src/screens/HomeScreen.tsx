@@ -1,4 +1,4 @@
-import React from 'react';
+﻿import React from 'react';
 import { View, Text, StyleSheet, ScrollView, TouchableOpacity, SafeAreaView, Dimensions } from 'react-native';
 import { NativeStackNavigationProp } from '@react-navigation/native-stack';
 import { RootStackParamList } from '../navigation/RootNavigator';
@@ -13,10 +13,10 @@ interface Props {
 }
 
 const FEATURES = [
-  { icon: Layers, title: 'Flashcard', desc: 'H?c t? v?ng tr?c quan' },
-  { icon: Brain, title: 'Spaced Repetition', desc: 'Thu?t to�n nh? l�u' },
-  { icon: Target, title: 'Collocation', desc: 'H?c theo ng? c?nh' },
-  { icon: BarChart3, title: 'Ti?n d?', desc: 'Theo d�i m?i ng�y' }
+  { icon: Layers, title: 'Flashcard', desc: 'Học từ vựng trực quan' },
+  { icon: Brain, title: 'Spaced Repetition', desc: 'Thuật toán nhớ lâu' },
+  { icon: Target, title: 'Collocation', desc: 'Học theo ngữ cảnh' },
+  { icon: BarChart3, title: 'Tiến độ', desc: 'Theo dõi mỗi ngày' }
 ];
 
 export default function HomeScreen({ navigation }: Props) {
@@ -26,17 +26,17 @@ export default function HomeScreen({ navigation }: Props) {
         
         {/* HERO SECTION */}
         <View style={styles.heroSection}>
-          <Text style={styles.badge}>Minlish App ??</Text>
+          <Text style={styles.badge}>Minlish App 🚀</Text>
           <Text style={styles.title}>
             Master Vocabulary{'\n'}
             <Text style={styles.titleHighlight}>The Smart Way</Text>
           </Text>
           <Text style={styles.subtitle}>
-            ?ng d?ng h?c t? v?ng ti?ng Anh v?i c�ng ngh? Spaced Repetition th�ng minh, gi�p b?n nh? s�u v� hi?u qu?.
+            Ứng dụng học từ vựng tiếng Anh với công nghệ Spaced Repetition thông minh, giúp bạn nhớ sâu và hiệu quả.
           </Text>
           
           <TouchableOpacity style={styles.ctaButton} onPress={() => navigation.navigate('Login')}>
-            <Text style={styles.ctaText}>B?t �?u Ngay</Text>
+            <Text style={styles.ctaText}>Bắt Đầu Ngay</Text>
           </TouchableOpacity>
         </View>
 
