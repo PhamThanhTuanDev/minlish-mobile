@@ -1,350 +1,76 @@
-import { useEffect, useState } from "react";
-import { ActivityIndicator, Pressable, ScrollView, StyleSheet, Text, View, RefreshControl } from "react-native";
-import { SafeAreaView } from "react-native-safe-area-context";
-import { NativeStackScreenProps } from "@react-navigation/native-stack";
-import { RootStackParamList } from "../navigation/RootNavigator";
-import { getMyProfile, fetchLearningStats } from "../services/api";
-import { clearSession } from "../storage/authStorage";
-import { UserProfile, LearningStats } from "../types/api";
-import { colors } from "../theme/styles";
+import React from 'react';
+import { View, Text, StyleSheet, ScrollView, TouchableOpacity, SafeAreaView, Dimensions } from 'react-native';
+import { NativeStackNavigationProp } from '@react-navigation/native-stack';
+import { RootStackParamList } from '../navigation/RootNavigator';
+import { Layers, Brain, Target, BarChart3, Zap, BookOpen } from 'lucide-react-native';
 
-type Props = NativeStackScreenProps<RootStackParamList, "Home">;
+const { width } = Dimensions.get('window');
+
+type HomeScreenNavigationProp = NativeStackNavigationProp<RootStackParamList, 'Home'>;
+
+interface Props {
+  navigation: HomeScreenNavigationProp;
+}
+
+const FEATURES = [
+  { icon: Layers, title: 'Flashcard', desc: 'H?c t? v?ng tr?c quan' },
+  { icon: Brain, title: 'Spaced Repetition', desc: 'Thu?t to�n nh? l�u' },
+  { icon: Target, title: 'Collocation', desc: 'H?c theo ng? c?nh' },
+  { icon: BarChart3, title: 'Ti?n d?', desc: 'Theo d�i m?i ng�y' }
+];
 
 export default function HomeScreen({ navigation }: Props) {
-  const [profile, setProfile] = useState<UserProfile | null>(null);
-  const [stats, setStats] = useState<LearningStats | null>(null);
-  const [loading, setLoading] = useState(true);
-  const [refreshing, setRefreshing] = useState(false);
-  const [error, setError] = useState<string | null>(null);
-
-  const loadData = async () => {
-    try {
-      setError(null);
-      const [profileData, statsData] = await Promise.all([
-        getMyProfile(),
-        fetchLearningStats()
-      ]);
-      setProfile(profileData);
-      setStats(statsData);
-    } catch (err) {
-      setError(err instanceof Error ? err.message : "Đã có lỗi xảy ra");
-    }
-  };
-
-  useEffect(() => {
-    setLoading(true);
-    void loadData().finally(() => setLoading(false));
-  }, []);
-
-  const onRefresh = async () => {
-    setRefreshing(true);
-    await loadData();
-    setRefreshing(false);
-  };
-
-  const handleLogout = async () => {
-    await clearSession();
-    navigation.reset({
-      index: 0,
-      routes: [{ name: "Login" }],
-    });
-  };
-
-  const StatCard = ({ icon, value, label, color }: { icon: string, value: number | string, label: string, color: string }) => (
-    <View style={styles.statCard}>
-      <View style={[styles.iconContainer, { backgroundColor: color + '15' }]}>
-        <Text style={styles.icon}>{icon}</Text>
-      </View>
-      <View style={styles.statInfo}>
-        <Text style={styles.statValue}>{value}</Text>
-        <Text style={styles.statLabel}>{label}</Text>
-      </View>
-    </View>
-  );
-
   return (
     <SafeAreaView style={styles.container}>
-      <ScrollView
-        contentContainerStyle={styles.scrollContent}
-        showsVerticalScrollIndicator={false}
-        refreshControl={
-          <RefreshControl refreshing={refreshing} onRefresh={onRefresh} colors={[colors.primary]} />
-        }
-      >
-        <View style={styles.header}>
-          <View>
-            <Text style={styles.greeting}>Chào mừng trở lại, 👋</Text>
-            <Text style={styles.name}>{profile?.fullName || "Học viên"}</Text>
-          </View>
-          <View style={styles.avatarPlaceholder}>
-            <Text style={styles.avatarText}>{profile?.fullName?.charAt(0)?.toUpperCase() || "U"}</Text>
-          </View>
-        </View>
-
-        <View style={styles.section}>
-          <Text style={styles.sectionTitle}>Tổng quan học tập</Text>
+      <ScrollView contentContainerStyle={styles.scrollContent} showsVerticalScrollIndicator={false}>
+        
+        {/* HERO SECTION */}
+        <View style={styles.heroSection}>
+          <Text style={styles.badge}>Minlish App ??</Text>
+          <Text style={styles.title}>
+            Master Vocabulary{'\n'}
+            <Text style={styles.titleHighlight}>The Smart Way</Text>
+          </Text>
+          <Text style={styles.subtitle}>
+            ?ng d?ng h?c t? v?ng ti?ng Anh v?i c�ng ngh? Spaced Repetition th�ng minh, gi�p b?n nh? s�u v� hi?u qu?.
+          </Text>
           
-          {loading && !refreshing ? (
-            <ActivityIndicator style={{ marginTop: 20 }} color={colors.primary} />
-          ) : error ? (
-            <View style={styles.errorContainer}>
-              <Text style={styles.errorText}>{error}</Text>
-              <Pressable style={styles.retryButton} onPress={loadData}>
-                <Text style={styles.retryText}>Thử lại</Text>
-              </Pressable>
-            </View>
-          ) : (
-            <View style={styles.statsGrid}>
-              <StatCard 
-                icon="📖" 
-                value={stats?.totalWords || 0} 
-                label="Số từ đã học" 
-                color={colors.primary} 
-              />
-              <StatCard 
-                icon="🔥" 
-                value={stats?.streakDays || stats?.streak || 0} 
-                label="Ngày Streak" 
-                color={colors.warning} 
-              />
-              <StatCard 
-                icon="🎯" 
-                value={`${stats?.accuracy || 0}%`} 
-                label="Độ chính xác" 
-                color={colors.primary} 
-              />
-              <StatCard 
-                icon="📈" 
-                value={stats?.totalStudyRounds || 0} 
-                label="Lượt học" 
-                color={colors.success} 
-              />
-            </View>
-          )}
+          <TouchableOpacity style={styles.ctaButton} onPress={() => navigation.navigate('Login')}>
+            <Text style={styles.ctaText}>B?t �?u Ngay</Text>
+          </TouchableOpacity>
         </View>
 
-        {!loading && profile && (
-          <View style={[styles.section, styles.profileSection]}>
-            <Text style={styles.sectionTitle}>Thông tin cá nhân</Text>
-            <View style={styles.profileCard}>
-              <View style={styles.profileRow}>
-                <Text style={styles.profileLabel}>Mục tiêu</Text>
-                <View style={styles.badge}>
-                  <Text style={styles.badgeText}>{profile.learningGoal || "Chưa đặt"}</Text>
-                </View>
+        {/* FEATURES GRID */}
+        <View style={styles.featuresContainer}>
+          {FEATURES.map((feat, index) => (
+            <View key={index} style={styles.featureCard}>
+              <View style={styles.iconBox}>
+                <feat.icon size={24} color="#3b82f6" />
               </View>
-              <View style={styles.profileDivider} />
-              <View style={styles.profileRow}>
-                <Text style={styles.profileLabel}>Trình độ</Text>
-                <View style={[styles.badge, styles.badgeAlt]}>
-                  <Text style={[styles.badgeText, styles.badgeTextAlt]}>{profile.level || "Cơ bản"}</Text>
-                </View>
-              </View>
-              <View style={styles.profileDivider} />
-              <View style={styles.profileRow}>
-                <Text style={styles.profileLabel}>Ước lượng</Text>
-                <View style={[styles.badge, styles.badgeSuccess]}>
-                  <Text style={[styles.badgeText, styles.badgeTextSuccess]}>{stats?.levelEstimate || "N/A"}</Text>
-                </View>
-              </View>
+              <Text style={styles.featureTitle}>{feat.title}</Text>
+              <Text style={styles.featureDesc}>{feat.desc}</Text>
             </View>
-          </View>
-        )}
+          ))}
+        </View>
 
       </ScrollView>
-
-      <View style={styles.footer}>
-         <Pressable style={styles.logoutButton} onPress={handleLogout}>
-          <Text style={styles.logoutText}>Đăng xuất</Text>
-        </Pressable>
-      </View>
     </SafeAreaView>
   );
 }
 
 const styles = StyleSheet.create({
-  container: {
-    flex: 1,
-    backgroundColor: colors.background,
-  },
-  scrollContent: {
-    padding: 20,
-    paddingBottom: 100,
-  },
-  header: {
-    flexDirection: "row",
-    justifyContent: "space-between",
-    alignItems: "center",
-    marginBottom: 30,
-    marginTop: 10,
-  },
-  greeting: {
-    fontSize: 14,
-    color: colors.textLight,
-    marginBottom: 4,
-  },
-  name: {
-    fontSize: 24,
-    fontWeight: "700",
-    color: colors.text,
-  },
-  avatarPlaceholder: {
-    width: 48,
-    height: 48,
-    borderRadius: 24,
-    backgroundColor: colors.primary + '20',
-    alignItems: "center",
-    justifyContent: "center",
-  },
-  avatarText: {
-    fontSize: 20,
-    fontWeight: "700",
-    color: colors.primary,
-  },
-  section: {
-    marginBottom: 24,
-  },
-  sectionTitle: {
-    fontSize: 18,
-    fontWeight: "700",
-    color: colors.text,
-    marginBottom: 16,
-  },
-  statsGrid: {
-    flexDirection: "row",
-    flexWrap: "wrap",
-    gap: 12,
-    justifyContent: "space-between",
-  },
-  statCard: {
-    width: "48%",
-    backgroundColor: colors.surface,
-    borderRadius: 16,
-    padding: 16,
-    borderWidth: 1,
-    borderColor: colors.border,
-    shadowColor: "#000",
-    shadowOffset: { width: 0, height: 2 },
-    shadowOpacity: 0.05,
-    shadowRadius: 8,
-    elevation: 2,
-    marginBottom: 12,
-  },
-  iconContainer: {
-    width: 40,
-    height: 40,
-    borderRadius: 12,
-    alignItems: "center",
-    justifyContent: "center",
-    marginBottom: 12,
-  },
-  icon: {
-    fontSize: 20,
-  },
-  statInfo: {
-    gap: 4,
-  },
-  statValue: {
-    fontSize: 20,
-    fontWeight: "700",
-    color: colors.text,
-  },
-  statLabel: {
-    fontSize: 12,
-    color: colors.textLight,
-    fontWeight: "500",
-  },
-  profileSection: {
-    marginTop: 8,
-  },
-  profileCard: {
-    backgroundColor: colors.surface,
-    borderRadius: 16,
-    borderWidth: 1,
-    borderColor: colors.border,
-    padding: 16,
-  },
-  profileRow: {
-    flexDirection: "row",
-    justifyContent: "space-between",
-    alignItems: "center",
-    paddingVertical: 8,
-  },
-  profileLabel: {
-    fontSize: 14,
-    fontWeight: "600",
-    color: colors.textLight,
-  },
-  profileDivider: {
-    height: 1,
-    backgroundColor: colors.border,
-    marginVertical: 4,
-  },
-  badge: {
-    backgroundColor: colors.primary + '15',
-    paddingHorizontal: 12,
-    paddingVertical: 6,
-    borderRadius: 20,
-  },
-  badgeText: {
-    color: colors.primary,
-    fontSize: 12,
-    fontWeight: "600",
-  },
-  badgeAlt: {
-    backgroundColor: colors.accent + '20',
-  },
-  badgeTextAlt: {
-    color: '#d97706',
-  },
-  badgeSuccess: {
-    backgroundColor: colors.success + '15',
-  },
-  badgeTextSuccess: {
-    color: colors.success,
-  },
-  errorContainer: {
-    padding: 16,
-    alignItems: "center",
-  },
-  errorText: {
-    color: colors.error,
-    marginBottom: 12,
-    textAlign: "center",
-  },
-  retryButton: {
-    backgroundColor: colors.surface,
-    borderWidth: 1,
-    borderColor: colors.error,
-    paddingHorizontal: 16,
-    paddingVertical: 8,
-    borderRadius: 8,
-  },
-  retryText: {
-    color: colors.error,
-    fontWeight: "600",
-  },
-  footer: {
-    position: 'absolute',
-    bottom: 0,
-    left: 0,
-    right: 0,
-    padding: 20,
-    backgroundColor: colors.background,
-    borderTopWidth: 1,
-    borderTopColor: colors.border,
-  },
-  logoutButton: {
-    backgroundColor: colors.surface,
-    borderWidth: 1,
-    borderColor: colors.primary,
-    borderRadius: 12,
-    alignItems: "center",
-    paddingVertical: 14,
-  },
-  logoutText: {
-    color: colors.primary,
-    fontWeight: "700",
-    fontSize: 16,
-  },
+  container: { flex: 1, backgroundColor: '#ffffff' },
+  scrollContent: { padding: 24, paddingBottom: 60, alignItems: 'center' },
+  heroSection: { alignItems: 'center', marginTop: 40, marginBottom: 40 },
+  badge: { backgroundColor: '#eff6ff', color: '#3b82f6', paddingHorizontal: 12, paddingVertical: 6, borderRadius: 20, fontWeight: '600', marginBottom: 16 },
+  title: { fontSize: 36, fontWeight: 'bold', textAlign: 'center', color: '#0f172a', lineHeight: 44 },
+  titleHighlight: { color: '#3b82f6' },
+  subtitle: { fontSize: 16, color: '#64748b', textAlign: 'center', marginTop: 16, marginBottom: 32, lineHeight: 24, paddingHorizontal: 10 },
+  ctaButton: { backgroundColor: '#3b82f6', paddingHorizontal: 32, paddingVertical: 16, borderRadius: 24, shadowColor: '#3b82f6', shadowOpacity: 0.3, shadowRadius: 8, shadowOffset: { width: 0, height: 4 }, elevation: 5 },
+  ctaText: { color: 'white', fontSize: 18, fontWeight: 'bold' },
+  featuresContainer: { flexDirection: 'row', flexWrap: 'wrap', justifyContent: 'space-between', width: '100%' },
+  featureCard: { width: (width - 64) / 2, backgroundColor: '#f8fafc', padding: 20, borderRadius: 16, marginBottom: 16, alignItems: 'center' },
+  iconBox: { backgroundColor: '#eff6ff', padding: 12, borderRadius: 12, marginBottom: 12 },
+  featureTitle: { fontSize: 16, fontWeight: '700', color: '#0f172a', marginBottom: 4, textAlign: 'center' },
+  featureDesc: { fontSize: 13, color: '#64748b', textAlign: 'center' },
 });
