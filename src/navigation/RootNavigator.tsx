@@ -5,7 +5,7 @@ import { getAccessToken } from '../storage/authStorage';
 import LoginScreen from '../screens/LoginScreen';
 import HomeScreen from '../screens/HomeScreen';
 
-const Stack = createNativeStackNavigator();
+const Stack = createNativeStackNavigator<RootStackParamList>();
 
 export type RootStackParamList = {
   Login: undefined;
@@ -17,7 +17,7 @@ export function RootNavigator() {
   const [isLoggedIn, setIsLoggedIn] = useState<boolean | null>(null);
 
   useEffect(() => {
-    checkAuthStatus();
+    void checkAuthStatus();
   }, []);
 
   const checkAuthStatus = async () => {
@@ -37,15 +37,13 @@ export function RootNavigator() {
   return (
     <NavigationContainer>
       <Stack.Navigator
+        initialRouteName={isLoggedIn ? 'Home' : 'Login'}
         screenOptions={{
           headerShown: false,
         }}
       >
-        {!isLoggedIn ? (
-          <Stack.Screen name="Login" component={LoginScreen as any} />
-        ) : (
-          <Stack.Screen name="Home" component={HomeScreen as any} />
-        )}
+        <Stack.Screen name="Login" component={LoginScreen} />
+        <Stack.Screen name="Home" component={HomeScreen} />
       </Stack.Navigator>
     </NavigationContainer>
   );
