@@ -6,15 +6,20 @@ import {
   TouchableOpacity,
   ActivityIndicator,
   FlatList,
-  Alert
+  Alert,
+  Modal,
+  TextInput,
+  ScrollView,
+  KeyboardAvoidingView,
+  Platform
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { useNavigation, useRoute, RouteProp } from '@react-navigation/native';
 import { NativeStackNavigationProp } from '@react-navigation/native-stack';
-import { ArrowLeft, BookOpen, Volume2, Plus } from 'lucide-react-native';
+import { ArrowLeft, BookOpen, Volume2, Plus, Edit, Trash2, Search, X } from 'lucide-react-native';
 
 import { colors, commonStyles } from '../theme/styles';
-import { fetchVocabularySet } from '../services/api';
+import { fetchVocabularySet, addVocabularyToSet, updateVocabulary, deleteVocabulary } from '../services/api';
 import { VocabularySet, VocabularyWord } from '../types/api';
 import { RootStackParamList } from '../navigation/RootNavigator';
 
@@ -27,60 +32,132 @@ export default function SetDetailScreen() {
   const { setId } = route.params;
 
   const [vocabSet, setVocabSet] = useState<VocabularySet | null>(null);
+  const [words, setWords] = useState<VocabularyWord[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   const [refreshing, setRefreshing] = useState(false);
   const [errorMsg, setErrorMsg] = useState<string | null>(null);
 
-  useEffect(() => {
-    const loadDetail = async () => {
-      setErrorMsg(null);
-      try {
-        setIsLoading(true);
-        const data = await fetchVocabularySet(setId);
-        setVocabSet(data);
-      } catch (error: any) {
-        console.error('L·ªói t·∫£i chi ti·∫øt b·ªô t·ª´:', error);
-        // Do not set a small fallback; show error so user can retry ‚Äî prevents misleading 3-item list
-        setVocabSet(null);
-        // extract message if possible
-        try {
-          const em = error?.message || (typeof error === 'string' ? error : JSON.stringify(error));
-          setErrorMsg(String(em));
-        } catch (e) {
-          setErrorMsg('ƒê√£ x·∫£y ra l·ªói khi t·∫£i d·ªØ li·ªáu.');
-        }
-      } finally {
-        setIsLoading(false);
-      }
-    };
+  // Search
+  const [searchQuery, setSearchQuery] = useState('');
 
+  // Form Modal State
+  const [modalVisible, setModalVisible] = useState(false);
+  const [isSubmitting, setIsSubmitting] = useState(false);
+  const [editingWordId, setEditingWordId] = useState<string | null>(null);
+  
+  const [form, setForm] = useState({
+    word: '', pronunciation: '', meaning: '', type: '', example: '', note: ''
+  });
+
+  const loadDetail = async () => {
+    setErrorMsg(null);
+    try {
+      setIsLoading(true);
+      const data = await fetchVocabularySet(setId);
+      setVocabSet(data);
+      setWords(data.words || []);
+    } catch (error: any) {
+      console.error('L?i t?i chi ti?t b? t?:', error);
+      setVocabSet(null);
+      setWords([]);
+      try {
+        const em = error?.message || (typeof error === 'string' ? error : JSON.stringify(error));
+        setErrorMsg(String(em));
+      } catch (e) {
+        setErrorMsg('–„ x?y ra l?i khi t?i d? li?u.');
+      }
+    } finally {
+      setIsLoading(false);
+    }
+  };
+
+  useEffect(() => {
     loadDetail();
   }, [setId]);
 
+  const onRefresh = async () => {
+    setRefreshing(true);
+    try {
+      const data = await fetchVocabularySet(setId);
+      setVocabSet(data);
+      setWords(data.words || []);
+      setErrorMsg(null);
+    } catch(e) { }
+    setRefreshing(false);
+  };
+
   const handleLearn = () => {
-    if (!vocabSet?.id) {
-      Alert.alert('Kh√¥ng th·ªÉ b·∫Øt ƒë·∫ßu', 'Kh√¥ng c√≥ d·ªØ li·ªáu b·ªô t·ª´ ƒë·ªÉ b·∫Øt ƒë·∫ßu h·ªçc.');
+    if (!vocabSet?.id || words.length === 0) {
+      Alert.alert('KhÙng th? b?t d?u', 'B? t? v?ng n‡y khÙng cÛ t? n‡o d? h?c.');
       return;
     }
     navigation.navigate('Quiz', { setId: vocabSet.id });
   };
 
   const handlePronounce = (word: string) => {
-    // If expo-speech is installed you can replace this Alert with Speech.speak(word)
-    Alert.alert('Ph√°t √¢m', `ƒê·ªçc t·ª´: ${word}`);
+    Alert.alert('Ph·t ‚m', \–?c t?: \\);
   };
 
-  const onRefresh = async () => {
-    setRefreshing(true);
-    await (async () => {
-      try {
-        await loadDetail();
-      } catch (e) {
-        // already handled in loadDetail
-      }
-    })();
-    setRefreshing(false);
+  const handleOpenForm = (word?: VocabularyWord) => {
+    if (word) {
+      setEditingWordId(word.id);
+      setForm({
+        word: word.word || '',
+        pronunciation: word.pronunciation || '',
+        meaning: word.meaning || '',
+        type: word.type || '',
+        example: word.example || '',
+        note: word.note || ''
+      });
+    } else {
+      setEditingWordId(null);
+      setForm({ word: '', pronunciation: '', meaning: '', type: '', example: '', note: '' });
+    }
+    setModalVisible(true);
   };
+
+  const handleSaveForm = async () => {
+    if (!form.word || !form.meaning) {
+      Alert.alert('L?i', 'Vui lÚng nh?p T? v‡ Nghia.');
+      return;
+    }
+    setIsSubmitting(true);
+    try {
+      if (editingWordId) {
+        const updated = await updateVocabulary(editingWordId, form);
+        setWords(prev => prev.map(w => w.id === editingWordId ? { ...w, ...updated } : w));
+        Alert.alert('Th‡nh cÙng', '–„ c?p nh?t t? v?ng');
+      } else {
+        const added = await addVocabularyToSet(setId, form);
+        setWords(prev => [...prev, added]);
+        Alert.alert('Th‡nh cÙng', '–„ thÍm t? m?i');
+      }
+      setModalVisible(false);
+    } catch (e: any) {
+      Alert.alert('L?i', e.message || 'KhÙng th? luu t? v?ng');
+    } finally {
+      setIsSubmitting(false);
+    }
+  };
+
+  const handleDelete = (wordId: string) => {
+    Alert.alert('XÛa t? n‡y?', 'T? n‡y s? b? xÛa kh?i b? t? v?ng.', [
+      { text: 'H?y', style: 'cancel' },
+      { text: 'XÛa', style: 'destructive', onPress: async () => {
+          try {
+            await deleteVocabulary(wordId);
+            setWords(prev => prev.filter(w => w.id !== wordId));
+          } catch(e:any) {
+            Alert.alert('L?i', 'KhÙng th? xÛa t? n‡y');
+          }
+      }}
+    ]);
+  };
+
+  const filteredWords = words.filter(w => 
+    w.word.toLowerCase().includes(searchQuery.toLowerCase()) || 
+    w.meaning.toLowerCase().includes(searchQuery.toLowerCase())
+  );
 
   const renderWordItem = ({ item, index }: { item: VocabularyWord; index: number }) => (
     <View style={styles.wordCard}>
@@ -88,15 +165,23 @@ export default function SetDetailScreen() {
         <View style={styles.wordTitleRow}>
           <Text style={styles.wordIndex}>{index + 1}.</Text>
           <Text style={styles.wordText}>{item.word}</Text>
-          {item.type && (
+          {item.type ? (
             <View style={styles.typeBadge}>
               <Text style={styles.typeText}>{item.type}</Text>
             </View>
-          )}
+          ) : null}
         </View>
-        <TouchableOpacity onPress={() => handlePronounce(item.word)} style={styles.soundBtn}>
-          <Volume2 size={20} color={colors.primary} />
-        </TouchableOpacity>
+        <View style={styles.actionRow}>
+          <TouchableOpacity onPress={() => handlePronounce(item.word)} style={styles.iconBtn}>
+            <Volume2 size={20} color={colors.primary} />
+          </TouchableOpacity>
+          <TouchableOpacity onPress={() => handleOpenForm(item)} style={styles.iconBtn}>
+            <Edit size={20} color="#64748b" />
+          </TouchableOpacity>
+          <TouchableOpacity onPress={() => handleDelete(item.id)} style={styles.iconBtn}>
+            <Trash2 size={20} color="#ef4444" />
+          </TouchableOpacity>
+        </View>
       </View>
       
       {item.pronunciation ? (
@@ -109,7 +194,7 @@ export default function SetDetailScreen() {
       
       {item.example ? (
         <View style={styles.exampleBox}>
-          <Text style={styles.exampleText}>V√≠ d·ª•: {item.example}</Text>
+          <Text style={styles.exampleText}>VÌ d?: {item.example}</Text>
         </View>
       ) : null}
     </View>
@@ -121,7 +206,7 @@ export default function SetDetailScreen() {
         <TouchableOpacity onPress={() => navigation.goBack()} style={styles.backBtn}>
           <ArrowLeft size={24} color={colors.text} />
         </TouchableOpacity>
-        <TouchableOpacity style={styles.addWordBtn}>
+        <TouchableOpacity style={styles.addWordBtn} onPress={() => handleOpenForm()}>
           <Plus size={20} color={colors.primaryDark} />
         </TouchableOpacity>
       </View>
@@ -131,34 +216,51 @@ export default function SetDetailScreen() {
         <Text style={styles.setDescription}>{vocabSet.description}</Text>
       ) : null}
 
+      {/* Stats & Actions */}
       <View style={styles.statsRow}>
         <View style={styles.statBadge}>
-          <Text style={styles.statBadgeText}>{vocabSet?.words?.length || 0} t·ª´ v·ª±ng</Text>
+          <Text style={styles.statBadgeText}>{words.length} t? v?ng</Text>
         </View>
         <TouchableOpacity style={styles.learnBtn} onPress={handleLearn}>
           <BookOpen size={18} color="#fff" style={{ marginRight: 8 }} />
-          <Text style={styles.learnBtnText}>H·ªçc b·ªô n√†y</Text>
+          <Text style={styles.learnBtnText}>H?c Ùn t?p</Text>
         </TouchableOpacity>
+      </View>
+
+      {/* Search Input */}
+      <View style={styles.searchContainer}>
+        <Search size={20} color={colors.textLight} />
+        <TextInput 
+          style={styles.searchInput}
+          placeholder="TÏm t? v?ng..."
+          value={searchQuery}
+          onChangeText={setSearchQuery}
+        />
+        {searchQuery.length > 0 && (
+          <TouchableOpacity onPress={() => setSearchQuery('')}>
+            <X size={18} color={colors.textLight} />
+          </TouchableOpacity>
+        )}
       </View>
     </View>
   );
 
   if (isLoading) {
     return (
-      <View style={[commonStyles.container, styles.center]}>
+      <SafeAreaView style={[commonStyles.container, styles.center]} edges={['top']}>
         <ActivityIndicator size="large" color={colors.primary} />
-      </View>
+      </SafeAreaView>
     );
   }
 
   if (errorMsg) {
     return (
       <SafeAreaView style={commonStyles.container} edges={['top']}>
-        <View style={[styles.center, { padding: 24 }] }>
-          <Text style={{ color: colors.error, marginBottom: 12, textAlign: 'center' }}>L·ªói t·∫£i chi ti·∫øt b·ªô t·ª´:</Text>
+        <View style={[styles.center, { padding: 24 }]}>
+          <Text style={{ color: colors.error, marginBottom: 12, textAlign: 'center' }}>L?i t?i chi ti?t b? t?:</Text>
           <Text style={{ color: colors.textLight, marginBottom: 20, textAlign: 'center' }}>{errorMsg}</Text>
           <TouchableOpacity style={[commonStyles.button, commonStyles.buttonPrimary, { width: '60%' }]} onPress={loadDetail}>
-            <Text style={commonStyles.buttonTextPrimary}>Th·ª≠ l·∫°i</Text>
+            <Text style={commonStyles.buttonTextPrimary}>Th? l?i</Text>
           </TouchableOpacity>
         </View>
       </SafeAreaView>
@@ -168,7 +270,7 @@ export default function SetDetailScreen() {
   return (
     <SafeAreaView style={commonStyles.container} edges={['top']}>
       <FlatList
-        data={vocabSet?.words || []}
+        data={filteredWords}
         keyExtractor={(item) => item.id}
         renderItem={renderWordItem}
         ListHeaderComponent={ListHeader}
@@ -177,11 +279,59 @@ export default function SetDetailScreen() {
         refreshing={refreshing}
         onRefresh={onRefresh}
         ListEmptyComponent={() => (
-          <View style={{ padding: 24 }}>
-            <Text style={{ textAlign: 'center', color: colors.textLight }}>Kh√¥ng c√≥ t·ª´ v·ª±ng ƒë·ªÉ hi·ªÉn th·ªã.</Text>
-          </View>
+           <View style={{ padding: 24 }}>
+             <Text style={{ textAlign: 'center', color: colors.textLight }}>KhÙng cÛ t? v?ng n‡o ph˘ h?p.</Text>
+           </View>
         )}
       />
+
+      {/* FORM MODAL THEO RESPONSIVE WEB */}
+      <Modal visible={modalVisible} animationType="slide" presentationStyle="formSheet">
+        <SafeAreaView style={styles.modalContainer}>
+          <KeyboardAvoidingView behavior={Platform.OS === 'ios' ? 'padding' : 'height'} style={{ flex: 1 }}>
+            <View style={styles.modalHeader}>
+              <TouchableOpacity onPress={() => setModalVisible(false)} style={{ padding: 8 }}>
+                <X size={24} color={colors.text} />
+              </TouchableOpacity>
+              <Text style={styles.modalTitle}>{editingWordId ? 'S?a t? v?ng' : 'ThÍm t? v?ng'}</Text>
+              <View style={{ width: 40 }} />
+            </View>
+
+            <ScrollView contentContainerStyle={styles.modalBody}>
+              
+              <Text style={styles.label}>T? ti?ng Anh *</Text>
+              <TextInput style={styles.input} placeholder="VÌ d?: Hello" value={form.word} onChangeText={(t) => setForm({...form, word: t})} />
+
+              <Text style={styles.label}>Nghia ti?ng Vi?t *</Text>
+              <TextInput style={styles.input} placeholder="VÌ d?: Xin ch‡o" value={form.meaning} onChangeText={(t) => setForm({...form, meaning: t})} />
+
+              <Text style={styles.label}>C·ch ph·t ‚m</Text>
+              <TextInput style={styles.input} placeholder="VÌ d?: /h?'l??/" value={form.pronunciation} onChangeText={(t) => setForm({...form, pronunciation: t})} />
+
+              <Text style={styles.label}>Lo?i t?</Text>
+              <TextInput style={styles.input} placeholder="n, v, adj, adv, idiom..." value={form.type} onChangeText={(t) => setForm({...form, type: t})} />
+
+              <Text style={styles.label}>C‚u vÌ d?</Text>
+              <TextInput style={[styles.input, { height: 80 }]} multiline textAlignVertical="top" placeholder="VÌ d?: Hello world!" value={form.example} onChangeText={(t) => setForm({...form, example: t})} />
+
+              <Text style={styles.label}>Ghi ch˙</Text>
+              <TextInput style={[styles.input, { height: 80 }]} multiline textAlignVertical="top" placeholder="Ghi ch˙ thÍm..." value={form.note} onChangeText={(t) => setForm({...form, note: t})} />
+
+            </ScrollView>
+
+            <View style={styles.modalFooter}>
+              <TouchableOpacity 
+                style={[commonStyles.button, commonStyles.buttonPrimary, { width: '100%' }]}
+                onPress={handleSaveForm}
+                disabled={isSubmitting}
+              >
+                {isSubmitting ? <ActivityIndicator color="#fff" /> : <Text style={commonStyles.buttonTextPrimary}>Luu t? v?ng</Text>}
+              </TouchableOpacity>
+            </View>
+          </KeyboardAvoidingView>
+        </SafeAreaView>
+      </Modal>
+
     </SafeAreaView>
   );
 }
@@ -190,6 +340,7 @@ const styles = StyleSheet.create({
   center: {
     justifyContent: 'center',
     alignItems: 'center',
+    flex: 1
   },
   listContent: {
     paddingBottom: 40,
@@ -206,7 +357,7 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     justifyContent: 'space-between',
     alignItems: 'center',
-    marginBottom: 20,
+    marginBottom: 16,
   },
   backBtn: {
     padding: 8,
@@ -233,7 +384,7 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     justifyContent: 'space-between',
     alignItems: 'center',
-    marginTop: 8,
+    marginBottom: 16,
   },
   statBadge: {
     backgroundColor: '#f1f5f9',
@@ -258,6 +409,22 @@ const styles = StyleSheet.create({
     color: '#fff',
     fontWeight: '700',
     fontSize: 14,
+  },
+  searchContainer: {
+    flexDirection: 'row',
+    backgroundColor: '#f8fafc',
+    borderRadius: 12,
+    paddingHorizontal: 12,
+    paddingVertical: 10,
+    alignItems: 'center',
+    borderWidth: 1,
+    borderColor: colors.border,
+  },
+  searchInput: {
+    flex: 1,
+    marginLeft: 8,
+    fontSize: 15,
+    color: colors.text,
   },
   wordCard: {
     backgroundColor: '#fff',
@@ -303,7 +470,11 @@ const styles = StyleSheet.create({
     fontWeight: '600',
     textTransform: 'lowercase',
   },
-  soundBtn: {
+  actionRow: {
+    flexDirection: 'row',
+    gap: 12,
+  },
+  iconBtn: {
     padding: 4,
   },
   pronunciationText: {
@@ -311,7 +482,7 @@ const styles = StyleSheet.create({
     color: colors.textLight,
     fontStyle: 'italic',
     marginTop: 4,
-    marginLeft: 24, // Th·ª•t l·ªÅ cho b·∫±ng v·ªõi ch·ªØ wordText
+    marginLeft: 24, // Th?t l?
   },
   divider: {
     height: 1,
@@ -334,5 +505,52 @@ const styles = StyleSheet.create({
     fontSize: 13,
     color: colors.textLight,
     fontStyle: 'italic',
+  },
+
+  /* MODAL */
+  modalContainer: {
+    flex: 1,
+    backgroundColor: '#fff',
+  },
+  modalHeader: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    paddingHorizontal: 8,
+    paddingVertical: 12,
+    borderBottomWidth: 1,
+    borderColor: colors.border,
+  },
+  modalTitle: {
+    fontSize: 18,
+    fontWeight: '700',
+    color: colors.text
+  },
+  modalBody: {
+    padding: 16,
+    paddingBottom: 40,
+  },
+  label: {
+    fontSize: 14,
+    fontWeight: '600',
+    color: colors.text,
+    marginBottom: 8,
+    marginTop: 16,
+  },
+  input: {
+    borderWidth: 1,
+    borderColor: '#cbd5e1',
+    borderRadius: 12,
+    paddingHorizontal: 16,
+    paddingVertical: 12,
+    fontSize: 15,
+    color: colors.text,
+    backgroundColor: '#f8fafc'
+  },
+  modalFooter: {
+    padding: 16,
+    borderTopWidth: 1,
+    borderColor: colors.border,
+    paddingBottom: Platform.OS === 'ios' ? 32 : 16,
   }
 });

@@ -238,3 +238,50 @@ function parseIsoWord(word: any): VocabularyWord {
     incorrectCount: Number(word.incorrectCount ?? 0),
   };
 }
+export async function addVocabularyToSet(setId: string, word: Partial<VocabularyWord>): Promise<VocabularyWord> {
+  const payload = {
+    word: word.word,
+    pronunciation: word.pronunciation,
+    meaning: word.meaning,
+    description: word.description,
+    descriptionVi: word.descriptionVi,
+    exampleSentence: word.example,
+    exampleVi: word.exampleVi,
+    fixedPhrase: word.collocation,
+    relatedWords: word.relatedWords,
+    notes: word.note,
+    type: word.type,
+    level: word.level,
+  };
+  const raw = await request<any>(/api/vocabularies/set/ + encodeURIComponent(setId), {
+    method: "POST",
+    body: JSON.stringify(payload),
+  });
+  return parseIsoWord(raw);
+}
+
+export async function updateVocabulary(vocabId: string, updates: Partial<VocabularyWord>): Promise<VocabularyWord> {
+  const payload = {
+    word: updates.word,
+    pronunciation: updates.pronunciation,
+    meaning: updates.meaning,
+    description: updates.description,
+    descriptionVi: updates.descriptionVi,
+    exampleSentence: updates.example,
+    exampleVi: updates.exampleVi,
+    fixedPhrase: updates.collocation,
+    relatedWords: updates.relatedWords,
+    notes: updates.note,
+    type: updates.type,
+    level: updates.level,
+  };
+  const raw = await request<any>(/api/vocabularies/ + encodeURIComponent(vocabId), {
+    method: "PUT",
+    body: JSON.stringify(payload),
+  });
+  return parseIsoWord(raw);
+}
+
+export async function deleteVocabulary(vocabId: string): Promise<void> {
+  await request<void>(/api/vocabularies/ + encodeURIComponent(vocabId), { method: 'DELETE' });
+}
