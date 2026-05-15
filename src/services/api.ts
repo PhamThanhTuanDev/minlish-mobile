@@ -8,9 +8,10 @@ async function request<T>(path: string, init?: RequestInit, includeAuth = true):
 
   if (includeAuth) {
     const token = await getAccessToken();
-    if (token) {
-      headers.set("Authorization", `Bearer ${token}`);
-    }
+  console.log("Token đang gửi lên:", token); // <-- Add dòng này xem có token chưa
+  if (token) {
+    headers.set("Authorization", `Bearer ${token}`);
+  }
   }
 
   const response = await fetch(`${API_BASE_URL}${path}`, {
@@ -140,7 +141,47 @@ export async function updateVocabularySet(id: string, set: Partial<VocabularySet
 }
 
 export async function fetchLearningStats(): Promise<LearningStats> {
-  return request<LearningStats>("/api/learning/stats");
+  // Web backend exposes summary + daily endpoints; combine them to match LearningStats type
+  const summary = await request<any>("/api/stats/summary");
+  // daily may be under /api/stats/daily or /api/stats/daily-activity depending on backend
+  let daily: any[] = [];
+  try {
+    daily = await request<any[]>("/api/stats/daily");
+  } catch (e) {
+    try {
+      daily = await request<any[]>("/api/stats/daily-activity");
+    } catch (e2) {
+      // no daily data available; leave as empty array
+      daily = [];
+    }
+  }
+
+  return {
+    totalWords: Number(summary?.totalWords ?? 0),
+    totalStudyRounds: Number(summary?.totalStudyRounds ?? 0),
+    wordsLearned: Number(summary?.wordsLearned ?? 0),
+    streak: summary?.streak ? Number(summary.streak) : undefined,
+    streakDays: summary?.streakDays ? Number(summary.streakDays) : undefined,
+    accuracy: Number(summary?.accuracy ?? 0),
+    dailyActivity: Array.isArray(daily)
+      ? daily.map((d: any) => ({
+          date: String(d.date ?? d.day ?? ''),
+          count: Number(d.count ?? d.activities ?? 0),
+          accuracy: d.accuracy != null ? Number(d.accuracy) : undefined,
+          newWordsLearned: d.newWordsLearned != null ? Number(d.newWordsLearned) : undefined,
+          timeSpentSeconds: d.timeSpentSeconds != null ? Number(d.timeSpentSeconds) : undefined,
+          retentionRate: d.retentionRate != null ? Number(d.retentionRate) : undefined,
+          studySessions: d.studySessions != null ? Number(d.studySessions) : undefined,
+        }))
+      : [],
+    retentionRate: Number(summary?.retentionRate ?? 0),
+    levelEstimate: summary?.levelEstimate ?? undefined,
+    last30DaysTimeSpent: Number(summary?.last30DaysTimeSpent ?? 0),
+    last30DaysNewWords: Number(summary?.last30DaysNewWords ?? 0),
+    last30DaysStudyDays: Number(summary?.last30DaysStudyDays ?? 0),
+    totalTimeSpent: Number(summary?.totalTimeSpent ?? 0),
+    totalStudyDays: Number(summary?.totalStudyDays ?? 0),
+  };
 }
 
 export async function submitQuizAnswer(
